@@ -1,3 +1,5 @@
+[hidden] { display: none !important; }
+
 :root {
   --blue: #0736fe;
   --ink: #231f20;
