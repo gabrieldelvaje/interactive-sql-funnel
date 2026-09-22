@@ -68,3 +68,24 @@ The expected schema and funnel definitions are documented in `docs/methodology.m
 7. The comparison and written insight are regenerated from the query results.
 
 No funnel KPI is hardcoded.
+
+
+## Preparing the real GA4 dataset
+
+1. Run `scripts/ga4_export.sql` in BigQuery against the public Google Merchandise Store sample.
+2. Export the flattened result as CSV.
+3. Install the local preparation dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+4. Convert and enrich it:
+
+```bash
+python scripts/prepare_data.py raw/ga4_funnel.csv data/ecommerce_events.parquet
+```
+
+5. Change `DATA_MODE` in `js/config.js` from `"demo"` to `"parquet"`.
+
+The preparation script validates the minimum schema, derives day/weekend fields, adds U.S. federal-holiday metadata and writes compressed Zstandard Parquet.
