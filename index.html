@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Interactive SQL e-commerce funnel powered by DuckDB-Wasm." />
+  <title>Where Did They Go? — Interactive SQL Funnel</title>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <div class="hero__eyebrow">
+      <span>Interactive SQL Funnel</span>
+      <span id="data-mode-badge" class="badge badge--demo">Demo data</span>
+    </div>
+    <h1>Where did they go?</h1>
+    <p class="hero__intro">
+      Change the cohort. Watch the SQL change. See where customers leave the funnel.
+    </p>
+    <div class="hero__meta">
+      <span>SQL</span><span>DuckDB-Wasm</span><span>Runs in your browser</span>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <aside class="control-panel">
+      <section class="panel-block">
+        <div class="section-heading">
+          <span class="section-index">01</span>
+          <h2>Filter the cohort</h2>
+          <button id="clear-filters" class="text-button" type="button">Clear all</button>
+        </div>
+
+        <div class="filter-group">
+          <span class="filter-label">Day type</span>
+          <div class="segmented" data-filter="dayType">
+            <button class="segmented__button is-active" data-value="all" type="button">All</button>
+            <button class="segmented__button" data-value="weekday" type="button">Weekdays</button>
+            <button class="segmented__button" data-value="weekend" type="button">Weekend</button>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <span class="filter-label">Holiday</span>
+          <div class="segmented" data-filter="holiday">
+            <button class="segmented__button is-active" data-value="all" type="button">All</button>
+            <button class="segmented__button" data-value="holiday" type="button">Holiday</button>
+            <button class="segmented__button" data-value="non-holiday" type="button">Non-holiday</button>
+          </div>
+        </div>
+
+        <div class="filter-row">
+          <label class="select-field">
+            <span>Region</span>
+            <select id="region-filter">
+              <option value="">All regions</option>
+            </select>
+          </label>
+          <label class="select-field">
+            <span>Device</span>
+            <select id="device-filter">
+              <option value="">All devices</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="filter-group">
+          <span class="filter-label">Day of week</span>
+          <div id="day-filter" class="day-grid">
+            <label><input type="checkbox" value="Monday"><span>Mon</span></label>
+            <label><input type="checkbox" value="Tuesday"><span>Tue</span></label>
+            <label><input type="checkbox" value="Wednesday"><span>Wed</span></label>
+            <label><input type="checkbox" value="Thursday"><span>Thu</span></label>
+            <label><input type="checkbox" value="Friday"><span>Fri</span></label>
+            <label><input type="checkbox" value="Saturday"><span>Sat</span></label>
+            <label><input type="checkbox" value="Sunday"><span>Sun</span></label>
+          </div>
+        </div>
+
+        <div class="cohort-context">
+          <span class="filter-label">Current cohort</span>
+          <div id="active-filters" class="filter-tags">
+            <span class="filter-tag filter-tag--muted">All sessions</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel-block sql-block">
+        <div class="section-heading">
+          <span class="section-index">02</span>
+          <h2>Live SQL</h2>
+          <span id="query-status" class="query-status">Ready</span>
+        </div>
+        <p class="microcopy">
+          Changed lines flash when a filter rewrites the query.
+        </p>
+        <pre class="sql-editor" aria-label="Live SQL query"><code id="sql-code"></code></pre>
+      </section>
+    </aside>
+
+    <section class="results-panel">
+      <div class="results-header">
+        <div>
+          <span class="section-index">03</span>
+          <h2>Funnel</h2>
+        </div>
+        <div id="sample-size" class="sample-size">— sessions</div>
+      </div>
+
+      <div id="error-box" class="error-box" hidden></div>
+
+      <div id="loading-state" class="loading-state">
+        <span class="loading-dot"></span>
+        Initializing DuckDB…
+      </div>
+
+      <div id="results-content" hidden>
+        <div class="funnel" id="funnel">
+          <article class="funnel-stage" data-stage="view">
+            <div class="funnel-stage__bar">
+              <span>View item</span>
+              <strong id="views-value">—</strong>
+            </div>
+            <div class="funnel-transition">
+              <span id="view-cart-retention">—</span>
+              <span id="view-cart-drop">—</span>
+            </div>
+          </article>
+
+          <article class="funnel-stage" data-stage="cart">
+            <div class="funnel-stage__bar">
+              <span>Add to cart</span>
+              <strong id="cart-value">—</strong>
+            </div>
+            <div class="funnel-transition">
+              <span id="cart-checkout-retention">—</span>
+              <span id="cart-checkout-drop">—</span>
+            </div>
+          </article>
+
+          <article class="funnel-stage" data-stage="checkout">
+            <div class="funnel-stage__bar">
+              <span>Begin checkout</span>
+              <strong id="checkout-value">—</strong>
+            </div>
+            <div class="funnel-transition">
+              <span id="checkout-purchase-retention">—</span>
+              <span id="checkout-purchase-drop">—</span>
+            </div>
+          </article>
+
+          <article class="funnel-stage" data-stage="purchase">
+            <div class="funnel-stage__bar">
+              <span>Purchase</span>
+              <strong id="purchase-value">—</strong>
+            </div>
+          </article>
+        </div>
+
+        <div class="summary-grid">
+          <section class="summary-block summary-block--primary">
+            <span class="summary-label">Overall conversion</span>
+            <strong id="overall-conversion">—</strong>
+            <span class="summary-caption">View item → purchase</span>
+          </section>
+
+          <section class="summary-block">
+            <span class="summary-label">Comparison</span>
+            <strong id="comparison-delta">—</strong>
+            <span id="comparison-label" class="summary-caption">Select a filter to compare cohorts</span>
+          </section>
+        </div>
+
+        <section class="analysis-block">
+          <div class="analysis-heading">
+            <span class="section-index">04</span>
+            <h2>Analysis</h2>
+          </div>
+          <p id="analysis-text">Select a filter to compare a cohort with a relevant baseline.</p>
+          <p id="sample-warning" class="sample-warning" hidden></p>
+        </section>
+
+        <section class="method-strip">
+          <span>Unit: session</span>
+          <span>Sequential funnel</span>
+          <span id="source-note">Synthetic development dataset</span>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <span>WHERE DID THEY GO?</span>
+    <span>Every number above comes from the visible SQL query.</span>
+  </footer>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
