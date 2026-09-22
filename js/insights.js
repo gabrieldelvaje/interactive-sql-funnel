@@ -68,8 +68,15 @@ export function buildInsight({
   }
 
   const warning = metrics.view < minSampleSize
-    ? `Only ${metrics.view.toLocaleString("en-US")} view sessions match this cohort. Treat comparisons cautiously.`
+    ? `Only ${metrics.view.toLocaleString("en-US")} view sessions match this cohort. The comparison threshold is ${minSampleSize.toLocaleString("en-US")} sessions.`
     : "";
+
+  if (metrics.view < minSampleSize) {
+    return {
+      text: `This cohort is below the minimum sample threshold, so no comparative conclusion is generated. The largest observed drop-off is between ${largest.label}.`,
+      warning
+    };
+  }
 
   if (!baselineMetrics || !baselineMetrics.view) {
     return {
