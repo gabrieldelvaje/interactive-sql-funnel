@@ -149,7 +149,7 @@ function renderComparison(metrics, baselineMetrics, baselineSpec, cohortLabel) {
   const baselineRate = funnelRates(baselineMetrics).overall;
   elements.comparisonDelta.textContent = pp(currentRate - baselineRate);
   elements.comparisonLabel.textContent =
-    `${cohortLabel} vs ${baselineSpec.label}`;
+    `${cohortLabel}: ${percentage(currentRate, 2)} · ${baselineSpec.label}: ${percentage(baselineRate, 2)}`;
 }
 
 function renderInsight(metrics, baselineMetrics, baselineSpec, cohortLabel) {
