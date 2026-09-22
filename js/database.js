@@ -1,4 +1,4 @@
-import * as duckdb from "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.1/+esm";
+import * as duckdb from "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.33.1-dev57.0/dist/duckdb-browser.mjs";
 import { CONFIG } from "./config.js";
 import { generateDemoCsv } from "./demo-data.js";
 
@@ -17,10 +17,35 @@ function rowToObject(row) {
   );
 }
 
-async function createDuckDB() {
-  const bundles = duckdb.getJsDelivrBundles();
-  const bundle = await duckdb.selectBundle(bundles);
+const DUCKDB_DIST =
+  "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.33.1-dev57.0/dist/";
 
+const DUCKDB_BUNDLES = {
+  mvp: {
+    mainModule: `${DUCKDB_DIST}duckdb-mvp.wasm`,
+    mainWorker: `${DUCKDB_DIST}duckdb-browser-mvp.worker.js`
+  },
+  eh: {
+    mainModule: `${DUCKDB_DIST}duckdb-eh.wasm`,
+    mainWorker: `${DUCKDB_DIST}duckdb-browser-eh.worker.js`
+  }
+};
+
+function withTimeout(promise, milliseconds, label) {
+  let timeoutId;
+
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${Math.round(milliseconds / 1000)} seconds.`));
+    }, milliseconds);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => {
+    clearTimeout(timeoutId);
+  });
+}
+
+async function instantiateBundle(bundle) {
   const workerUrl = URL.createObjectURL(
     new Blob(
       [`importScripts("${bundle.mainWorker}");`],
@@ -32,10 +57,42 @@ async function createDuckDB() {
   const logger = new duckdb.ConsoleLogger();
   const instance = new duckdb.AsyncDuckDB(logger, worker);
 
-  await instance.instantiate(bundle.mainModule, bundle.pthreadWorker);
-  URL.revokeObjectURL(workerUrl);
+  try {
+    await withTimeout(
+      instance.instantiate(bundle.mainModule, bundle.pthreadWorker),
+      15000,
+      "DuckDB initialization"
+    );
+    return instance;
+  } catch (error) {
+    worker.terminate();
+    throw error;
+  } finally {
+    URL.revokeObjectURL(workerUrl);
+  }
+}
 
-  return instance;
+async function createDuckDB() {
+  const selected = await withTimeout(
+    duckdb.selectBundle(DUCKDB_BUNDLES),
+    5000,
+    "DuckDB bundle selection"
+  );
+
+  try {
+    return await instantiateBundle(selected);
+  } catch (primaryError) {
+    const isMvp = selected.mainModule === DUCKDB_BUNDLES.mvp.mainModule;
+
+    if (isMvp) throw primaryError;
+
+    console.warn(
+      "Preferred DuckDB bundle failed. Falling back to MVP.",
+      primaryError
+    );
+
+    return instantiateBundle(DUCKDB_BUNDLES.mvp);
+  }
 }
 
 async function registerDemoDataset() {
