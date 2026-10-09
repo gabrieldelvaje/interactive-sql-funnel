@@ -1,199 +1,126 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Interactive SQL e-commerce funnel powered by DuckDB-Wasm." />
-  <title>Where Did They Go? — Interactive SQL Funnel</title>
-  <link rel="stylesheet" href="./css/styles.css" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f3f3f1">
+  <meta name="description" content="SQL Data Lab: explore tabelas relacionais visualmente e pratique SQL em um sandbox com desafios reais.">
+  <title>SQL Data Lab — Explore / Practice</title>
+  <link rel="stylesheet" href="./css/styles.css">
 </head>
 <body>
-  <header class="hero">
-    <div class="hero__eyebrow">
-      <span>Interactive SQL Funnel</span>
-      <span id="data-mode-badge" class="badge badge--demo">Demo data</span>
-    </div>
-    <h1>Where did they go?</h1>
-    <p class="hero__intro">
-      Change the cohort. Watch the SQL change. See where customers leave the funnel.
-    </p>
-    <div class="hero__meta">
-      <span>SQL</span><span>DuckDB-Wasm</span><span>Runs in your browser</span>
-    </div>
+  <header class="topbar">
+    <a class="brand" href="#explore" aria-label="SQL Data Lab — início"><span class="brand-mark">SQL<span>↗</span></span><span class="brand-name">DATA LAB</span></a>
+    <nav aria-label="Navegação principal" class="main-nav">
+      <a data-nav="explore" href="#explore" class="active">01 / EXPLORAR</a>
+      <a data-nav="sandbox" href="#sandbox">02 / SANDBOX</a>
+    </nav>
+    <span class="engine" id="engine-status"><i class="engine-dot"></i><span>Iniciando SQL</span></span>
   </header>
 
-  <main class="workspace">
-    <aside class="control-panel">
-      <section class="panel-block">
-        <div class="section-heading">
-          <span class="section-index">01</span>
-          <h2>Filter the cohort</h2>
-          <button id="clear-filters" class="text-button" type="button">Clear all</button>
-        </div>
+  <section class="intro">
+    <div class="eyebrow"><span>INTERACTIVE SQL EXPERIENCE</span><span>DATASET SINTÉTICO · E-COMMERCE</span></div>
+    <div class="intro-main"><div><p class="kicker" id="hero-kicker">01 — VISUAL QUERY BUILDER</p><h1 id="hero-title">Explore data.<br><em>See the SQL.</em></h1></div>
+      <p class="intro-copy" id="hero-copy">Selecione tabelas, colunas e relacionamentos. Transforme uma análise visual em uma consulta SQL de verdade, executada no navegador.</p></div>
+  </section>
 
-        <div class="filter-group">
-          <span class="filter-label">Day type</span>
-          <div class="segmented" data-filter="dayType">
-            <button class="segmented__button is-active" data-value="all" type="button">All</button>
-            <button class="segmented__button" data-value="weekday" type="button">Weekdays</button>
-            <button class="segmented__button" data-value="weekend" type="button">Weekend</button>
+  <div id="global-error" class="global-error" role="alert" hidden></div>
+
+  <main>
+    <section class="page" id="page-explore" aria-label="Explorador de dados">
+      <div class="page-bar"><span>WORKSPACE / EXPLORER</span><span id="explore-status">Preparando dados…</span></div>
+      <div class="explore-grid">
+        <aside class="configuration">
+          <div class="panel-top"><h2>Build your query</h2><button id="reset-builder" class="text-link" type="button">REINICIAR ↺</button></div>
+          <p class="panel-note">Cada ação reescreve uma parte do SQL.</p>
+          <div class="toggle-pair" id="mode-buttons"><button type="button" data-mode="aggregate" class="selected">ANALISAR</button><button type="button" data-mode="rows">EXPLORAR LINHAS</button></div>
+
+          <div class="control-set" id="controls-aggregate">
+            <label for="dimension">01 / Dimensão</label>
+            <select id="dimension"><option value="month">Mês</option><option value="channel">Canal</option><option value="region">Região</option><option value="category">Categoria (JOIN)</option><option value="segment">Segmento (JOIN)</option><option value="method">Meio de pagamento (JOIN)</option><option value="status">Status</option></select>
+            <label for="metric">02 / Métrica</label>
+            <select id="metric"><option value="revenue">Receita · SUM</option><option value="orders">Pedidos · COUNT DISTINCT</option><option value="ticket">Ticket médio · AVG calculada</option></select>
+            <label for="agg-status">03 / Status dos pedidos</label>
+            <select id="agg-status"><option value="">Todos os status</option><option value="delivered">Entregue</option><option value="shipped">Em transporte</option><option value="cancelled">Cancelado</option></select>
+            <label for="agg-region">04 / Região</label>
+            <select id="agg-region"><option value="">Todas as regiões</option><option value="Sudeste">Sudeste</option><option value="Sul">Sul</option><option value="Nordeste">Nordeste</option><option value="Centro-Oeste">Centro-Oeste</option><option value="Norte">Norte</option></select>
+            <label class="checkline"><input type="checkbox" id="window-toggle"><span>Função de janela <small>LAG / DENSE_RANK</small></span></label>
+            <div class="micro-info">Clique em uma barra para investigar um grupo. O clique adiciona uma condição ao SQL.</div>
+            <button class="text-link" id="clear-drill" type="button" hidden>✕ REMOVER SELEÇÃO DO GRÁFICO</button>
           </div>
-        </div>
 
-        <div class="filter-group">
-          <span class="filter-label">Holiday</span>
-          <div class="segmented" data-filter="holiday">
-            <button class="segmented__button is-active" data-value="all" type="button">All</button>
-            <button class="segmented__button" data-value="holiday" type="button">Holiday</button>
-            <button class="segmented__button" data-value="non-holiday" type="button">Non-holiday</button>
+          <div class="control-set" id="controls-rows" hidden>
+            <label for="base-table">01 / Tabela principal</label>
+            <select id="base-table"><option value="orders">orders — Pedidos</option><option value="customers">customers — Clientes</option><option value="order_items">order_items — Itens</option><option value="products">products — Produtos</option><option value="payments">payments — Pagamentos</option></select>
+            <label for="relation">02 / Relacionar com</label>
+            <select id="relation"><option value="">Nenhuma tabela</option></select>
+            <label>03 / Colunas selecionadas</label>
+            <div id="column-options" class="column-options"></div>
+            <label for="row-status">04 / Status</label>
+            <select id="row-status"><option value="">Todos</option><option value="delivered">Entregue</option><option value="shipped">Em transporte</option><option value="cancelled">Cancelado</option></select>
+            <label for="row-region">05 / Região</label>
+            <select id="row-region"><option value="">Todas</option><option value="Sudeste">Sudeste</option><option value="Sul">Sul</option><option value="Nordeste">Nordeste</option><option value="Centro-Oeste">Centro-Oeste</option><option value="Norte">Norte</option></select>
+            <label for="row-limit">06 / Limite</label>
+            <select id="row-limit"><option value="10">10 linhas</option><option value="25" selected>25 linhas</option><option value="50">50 linhas</option><option value="100">100 linhas</option></select>
           </div>
-        </div>
+          <div class="presets"><span class="minor-heading">QUICK START</span><button data-preset="revenue">RECEITA POR REGIÃO ↗</button><button data-preset="rank">RANKING DE CATEGORIAS ↗</button><button data-preset="time">EVOLUÇÃO MENSAL ↗</button></div>
+          <div class="data-caption"><span class="indicator"></span> Tabelas relacionais de demonstração, com dados gerados de forma determinística. Nenhum dado de cliente real.</div>
+        </aside>
 
-        <div class="filter-row">
-          <label class="select-field">
-            <span>Region</span>
-            <select id="region-filter">
-              <option value="">All regions</option>
-            </select>
-          </label>
-          <label class="select-field">
-            <span>Device</span>
-            <select id="device-filter">
-              <option value="">All devices</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="filter-group">
-          <span class="filter-label">Day of week</span>
-          <div id="day-filter" class="day-grid">
-            <label><input type="checkbox" value="Monday"><span>Mon</span></label>
-            <label><input type="checkbox" value="Tuesday"><span>Tue</span></label>
-            <label><input type="checkbox" value="Wednesday"><span>Wed</span></label>
-            <label><input type="checkbox" value="Thursday"><span>Thu</span></label>
-            <label><input type="checkbox" value="Friday"><span>Fri</span></label>
-            <label><input type="checkbox" value="Saturday"><span>Sat</span></label>
-            <label><input type="checkbox" value="Sunday"><span>Sun</span></label>
-          </div>
-        </div>
-
-        <div class="cohort-context">
-          <span class="filter-label">Current cohort</span>
-          <div id="active-filters" class="filter-tags">
-            <span class="filter-tag filter-tag--muted">All sessions</span>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel-block sql-block">
-        <div class="section-heading">
-          <span class="section-index">02</span>
-          <h2>Live SQL</h2>
-          <span id="query-status" class="query-status">Loading</span>
-        </div>
-        <p class="microcopy">
-          Changed lines flash when a filter rewrites the query.
-        </p>
-        <pre class="sql-editor" aria-label="Live SQL query"><code id="sql-code"></code></pre>
-      </section>
-    </aside>
-
-    <section class="results-panel">
-      <div class="results-header">
-        <div>
-          <span class="section-index">03</span>
-          <h2>Funnel</h2>
-        </div>
-        <div id="sample-size" class="sample-size">— sessions</div>
-      </div>
-
-      <div id="error-box" class="error-box" hidden></div>
-
-      <div id="loading-state" class="loading-state">
-        <span class="loading-dot"></span>
-        Initializing DuckDB…
-      </div>
-
-      <div id="results-content" hidden>
-        <div class="funnel" id="funnel">
-          <article class="funnel-stage" data-stage="view">
-            <div class="funnel-stage__bar">
-              <span>View item</span>
-              <strong id="views-value">—</strong>
-            </div>
-            <div class="funnel-transition">
-              <span id="view-cart-retention">—</span>
-              <span id="view-cart-drop">—</span>
-            </div>
-          </article>
-
-          <article class="funnel-stage" data-stage="cart">
-            <div class="funnel-stage__bar">
-              <span>Add to cart</span>
-              <strong id="cart-value">—</strong>
-            </div>
-            <div class="funnel-transition">
-              <span id="cart-checkout-retention">—</span>
-              <span id="cart-checkout-drop">—</span>
-            </div>
-          </article>
-
-          <article class="funnel-stage" data-stage="checkout">
-            <div class="funnel-stage__bar">
-              <span>Begin checkout</span>
-              <strong id="checkout-value">—</strong>
-            </div>
-            <div class="funnel-transition">
-              <span id="checkout-purchase-retention">—</span>
-              <span id="checkout-purchase-drop">—</span>
-            </div>
-          </article>
-
-          <article class="funnel-stage" data-stage="purchase">
-            <div class="funnel-stage__bar">
-              <span>Purchase</span>
-              <strong id="purchase-value">—</strong>
-            </div>
-          </article>
-        </div>
-
-        <div class="summary-grid">
-          <section class="summary-block summary-block--primary">
-            <span class="summary-label">Overall conversion</span>
-            <strong id="overall-conversion">—</strong>
-            <span class="summary-caption">View item → purchase</span>
+        <div class="explore-main">
+          <section class="query-pane">
+            <div class="pane-head"><div><span class="minor-heading">01 / GENERATED QUERY</span><h2>Live SQL</h2></div><div class="pane-actions"><span class="query-meta" id="query-meta">—</span><button type="button" id="copy-query" class="outline-btn">COPIAR SQL ↗</button><button type="button" id="open-in-sandbox" class="outline-btn">TESTAR NO SANDBOX ↗</button></div></div>
+            <p class="pane-caption">As linhas alteradas aparecem destacadas em azul. Consultas são executadas no DuckDB-Wasm.</p>
+            <pre id="live-code" class="code-surface" aria-label="Consulta SQL dinâmica"><code id="sql-code">-- Preparando consulta…</code></pre>
           </section>
-
-          <section class="summary-block">
-            <span class="summary-label">Comparison</span>
-            <strong id="comparison-delta">—</strong>
-            <span id="comparison-label" class="summary-caption">Select a filter to compare cohorts</span>
+          <section class="visual-pane">
+            <div class="pane-head"><div><span class="minor-heading">02 / QUERY RESULTS</span><h2 id="chart-heading">Revenue over time</h2></div><span class="query-meta" id="result-meta">—</span></div>
+            <div id="visual-error" class="feedback error" hidden></div>
+            <div id="chart" class="chart" role="group" aria-label="Gráfico interativo de resultados"><div class="empty">Os resultados aparecerão aqui após carregar o banco.</div></div>
+            <div class="table-heading"><span class="minor-heading">03 / RESULT SET</span><span id="table-count">—</span></div>
+            <div class="table-scroll"><table id="explore-results" class="data-table"><thead></thead><tbody></tbody></table></div>
           </section>
         </div>
+      </div>
+    </section>
 
-        <section class="analysis-block">
-          <div class="analysis-heading">
-            <span class="section-index">04</span>
-            <h2>Analysis</h2>
+    <section class="page" id="page-sandbox" aria-label="Sandbox SQL" hidden>
+      <div class="page-bar"><span>WORKSPACE / SQL PLAYGROUND</span><span>DUCKDB-WASM · SINTAXE SQL COMPATÍVEL</span></div>
+      <div class="sandbox-grid">
+        <aside class="lesson-sidebar">
+          <div class="panel-top"><h2>Learning path</h2><span class="query-meta"><span id="progress-text">0</span>/8</span></div>
+          <p class="panel-note">Do primeiro SELECT a funções de janela. Execute SQL e valide suas soluções.</p>
+          <div class="progress-track"><span id="progress-bar"></span></div>
+          <div id="lesson-list" class="lesson-list"></div>
+          <div class="sidebar-info"><strong>Databricks SQL?</strong><p>As consultas rodam localmente em DuckDB-Wasm. A sintaxe básica é semelhante à de Databricks SQL, mas este site não se conecta a nenhum workspace.</p><a href="https://docs.databricks.com/aws/en/sql/language-manual/" target="_blank" rel="noopener noreferrer">CONSULTAR REFERÊNCIA DATABRICKS ↗</a></div>
+        </aside>
+        <div class="sandbox-workspace">
+          <div class="lesson-content">
+            <span class="minor-heading" id="lesson-level">FUNDAMENTOS / 01</span>
+            <h2 id="lesson-title">Explore uma tabela</h2>
+            <p id="lesson-description">Carregando explicação…</p>
+            <div class="challenge"><span>YOUR CHALLENGE</span><p id="lesson-task"></p></div>
+            <div class="sandbox-toolbar"><span class="minor-heading">SQL EDITOR · <kbd>CTRL</kbd> + <kbd>ENTER</kbd> PARA EXECUTAR</span><button id="reset-query" class="text-link" type="button">RESTAURAR INÍCIO ↺</button></div>
+            <div class="editor-wrap"><div class="editor-top"><span>query.sql</span><span>READ-ONLY DATABASE</span></div><textarea id="sandbox-editor" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Editor SQL para os desafios" placeholder="SELECT * FROM orders LIMIT 10;"></textarea></div>
+            <div class="editor-actions"><button id="execute-query" class="primary-btn" type="button">▶ EXECUTAR</button><button id="check-answer" class="outline-btn" type="button">VERIFICAR DESAFIO</button><button id="show-hint" class="outline-btn" type="button">DICA</button><button id="show-solution" class="text-link" type="button">VER SOLUÇÃO ↗</button></div>
+            <div id="lesson-hint" class="feedback hint" hidden></div>
+            <div id="sandbox-feedback" class="feedback" role="status" aria-live="polite" hidden></div>
+            <div class="table-heading"><span class="minor-heading">QUERY OUTPUT</span><span id="sandbox-result-meta">Nenhuma consulta executada</span></div>
+            <div class="table-scroll"><table id="sandbox-results" class="data-table"><thead></thead><tbody></tbody></table></div>
+            <p class="small-note">Consultas SELECT e WITH são permitidas. Não é possível alterar ou apagar as tabelas. Resultados exibidos até 150 linhas.</p>
           </div>
-          <p id="analysis-text">Select a filter to compare a cohort with a relevant baseline.</p>
-          <p id="sample-warning" class="sample-warning" hidden></p>
-        </section>
-
-        <section class="method-strip">
-          <span>Unit: session</span>
-          <span>Sequential funnel</span>
-          <span id="source-note">Synthetic development dataset</span>
-        </section>
+        </div>
+        <aside class="schema-sidebar">
+          <div class="panel-top"><h2>Data catalog</h2><span class="minor-heading">05 TABLES</span></div>
+          <p class="panel-note">As duas páginas consultam as mesmas cinco tabelas.</p>
+          <div id="schema-list" class="schema-list"></div>
+          <button type="button" class="outline-btn schema-reset" id="reset-database">RECARREGAR BASE ↻</button>
+          <p class="small-note">Para usar um workspace Databricks real, seria necessário um serviço autenticado no servidor. Nunca publique tokens no GitHub Pages.</p>
+        </aside>
       </div>
     </section>
   </main>
-
-  <footer class="site-footer">
-    <span>WHERE DID THEY GO?</span>
-    <span>Every number above comes from the visible SQL query.</span>
-  </footer>
-
+  <footer><span>SQL DATA LAB / BUILT FOR EXPLORATION</span><span>RUNS LOCALLY IN YOUR BROWSER · NO SIGN-IN</span><a href="https://github.com/gabrieldelvaje/interactive-sql-funnel" target="_blank" rel="noopener noreferrer">GITHUB ↗</a></footer>
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>
