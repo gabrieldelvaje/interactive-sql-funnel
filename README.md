@@ -2,7 +2,7 @@
 **Explore data. See the SQL.** A two-page interactive SQL project for an analytics portfolio. This repository was previously named **Interactive SQL Funnel**; it has been intentionally redesigned rather than duplicated.
 
 ## Live site
-When GitHub Pages is configured to publish the repository's \`main\` branch: https://gabrieldelvaje.github.io/interactive-sql-funnel/
+When GitHub Pages is configured to publish the repository's `main` branch: https://gabrieldelvaje.github.io/interactive-sql-funnel/
 
 ## Page 01 — Explorer
 Interact with a realistic (but synthetic) relational database. Controls rewrite **SELECT lists, LEFT JOINs, WHERE clauses, GROUP BY, aggregations, CTEs, window functions, ORDER BY and LIMIT**, rather than simply substituting a WHERE filter.
@@ -12,7 +12,7 @@ Interact with a realistic (but synthetic) relational database. Controls rewrite 
 - Click a bar (categorical dimensions) to drill in: the SQL gains/removes a matching filter.
 - Each modified line is highlighted. Transfer the query to the sandbox or copy it.
 
-Revenue by category is calculated from **line items** (\`SUM(quantity * unit_price)\`), avoiding duplicated order revenue after one-to-many JOINs. Other dimensions aggregate \`orders.total_amount\` at order grain.
+Revenue by category is calculated from **line items** (`SUM(quantity * unit_price)`), avoiding duplicated order revenue after one-to-many JOINs. Other dimensions aggregate `orders.total_amount` at order grain.
 
 ## Page 02 — Sandbox
 A real SQL editor executing read-only queries against **the very same database**.
@@ -54,18 +54,18 @@ Seeded, **synthetic** data: 200 customers, 40 products, 1,200 orders, their orde
 
 Serve the root over HTTP to enable JavaScript modules and the DuckDB Web Worker:
 
-\`\`\`bash
+```bash
 python -m http.server 8000
 # http://localhost:8000
-\`\`\`
+```
 
 The first visit requires network access to load a pinned DuckDB-Wasm version from jsDelivr. If CDN/WebAssembly is unavailable, the UI shows a helpful load error rather than an infinite spinner. Browser queries thereafter run locally.
 
 Run source-level tests if Node.js is installed:
 
-\`\`\`bash
+```bash
 node --test
-\`\`\`
+```
 
 ## Databricks integration — important distinction
 
