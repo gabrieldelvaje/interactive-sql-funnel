@@ -1,91 +1,80 @@
-# Interactive SQL Funnel
+# SQL Data Lab
+**Explore data. See the SQL.** A two-page interactive SQL project for an analytics portfolio. This repository was previously named **Interactive SQL Funnel**; it has been intentionally redesigned rather than duplicated.
 
-**Where Did They Go?** is an interactive e-commerce funnel where every filter rewrites and executes SQL directly in the browser.
+## Live site
+When GitHub Pages is configured to publish the repository's \`main\` branch: https://gabrieldelvaje.github.io/interactive-sql-funnel/
 
-## Status
+## Page 01 — Explorer
+Interact with a realistic (but synthetic) relational database. Controls rewrite **SELECT lists, LEFT JOINs, WHERE clauses, GROUP BY, aggregations, CTEs, window functions, ORDER BY and LIMIT**, rather than simply substituting a WHERE filter.
 
-The first version uses a clearly labelled **DEMO dataset** generated locally in the browser so the interaction can be validated without publishing fake results as real-world findings.
+- **Analyze** — select a metric (revenue, distinct orders, average ticket), a dimension (month, channel, region, customer segment, product category, payment method or order status), status/region filters, and a window calculation (LAG / DENSE_RANK). The chart and result table run against the **same generated query**.
+- **Explore rows** — pick any of five source tables, add a valid relationship, select/deselect real columns, and change filters or row limits. Watch the actual projection/JOIN change in the live SQL panel.
+- Click a bar (categorical dimensions) to drill in: the SQL gains/removes a matching filter.
+- Each modified line is highlighted. Transfer the query to the sandbox or copy it.
 
-Architecture:
+Revenue by category is calculated from **line items** (\`SUM(quantity * unit_price)\`), avoiding duplicated order revenue after one-to-many JOINs. Other dimensions aggregate \`orders.total_amount\` at order grain.
 
-```text
-Demo data / Parquet
-        ↓
-   DuckDB-Wasm
-        ↓
-     Live SQL
-        ↓
- Funnel + baseline
-        ↓
- Deterministic insight
-```
+## Page 02 — Sandbox
+A real SQL editor executing read-only queries against **the very same database**.
 
-The application is designed so the demo source can later be replaced by a GA4-derived Parquet file without rebuilding the UI.
+1. SELECT * / FROM / LIMIT
+2. Selecting particular columns
+3. WHERE
+4. ORDER BY and LIMIT
+5. GROUP BY and COUNT
+6. JOIN
+7. HAVING
+8. CTEs and DENSE_RANK window functions
+
+Each lesson has an explanation, starter query, challenge, hint and solution. **Verify challenge** runs your SQL and a reference SQL query and compares the returned columns, rows and, where important, order. Merely including the right SQL keywords is not sufficient. Progress is stored locally in your browser; no login is required.
+
+Press Ctrl+Enter / Cmd+Enter to execute. The sandbox allows SELECT, WITH, EXPLAIN, DESCRIBE and SHOW, and does not permit database mutation or multiple statements. Query results are capped for display.
+
+## Data model
+
+| Table | Key(s) | Contains |
+|---|---|---|
+| customers | customer_id | customer_name, region, segment, signup_date |
+| orders | order_id; customer_id FK | order_date, status, channel, total_amount |
+| order_items | item_id; order_id FK; product_id FK | quantity, unit_price |
+| products | product_id | product_name, category, list_price |
+| payments | payment_id; order_id FK | method, paid_amount, payment_status |
+
+Seeded, **synthetic** data: 200 customers, 40 products, 1,200 orders, their order items and payments. Generated deterministically when the browser starts. These records are not real transactions, and all numeric outcomes represent this dataset only.
 
 ## Stack
+- HTML / CSS / JavaScript modules
+- DuckDB-Wasm + Arrow, running locally in the browser
+- GitHub Pages (static deploy, no custom backend)
+- Deterministic CSV generator and in-memory relational tables
+- SQL transformation + visual SQL diff
+- Node built-in test runner for SQL builder logic
 
-- HTML
-- CSS
-- JavaScript ES modules
-- DuckDB-Wasm
-- Apache Parquet-ready data layer
+## Local development
 
-## Run locally
+Serve the root over HTTP to enable JavaScript modules and the DuckDB Web Worker:
 
-Because the app uses ES modules and WebAssembly, serve it over HTTP:
-
-```bash
+\`\`\`bash
 python -m http.server 8000
-```
+# http://localhost:8000
+\`\`\`
 
-Then open:
+The first visit requires network access to load a pinned DuckDB-Wasm version from jsDelivr. If CDN/WebAssembly is unavailable, the UI shows a helpful load error rather than an infinite spinner. Browser queries thereafter run locally.
 
-```text
-http://localhost:8000
-```
+Run source-level tests if Node.js is installed:
 
-## Data modes
+\`\`\`bash
+node --test
+\`\`\`
 
-The current version starts in `demo` mode. The demo dataset is synthetic and exists only to validate the mechanics of the project.
+## Databricks integration — important distinction
 
-To switch to a real Parquet source later, edit `js/config.js` and set:
+**The publicly hosted sandbox is not connected to Databricks.** It runs DuckDB-Wasm with portable SQL patterns familiar to Databricks SQL users, but dialects and functions differ. There is no Databricks execution, workspace access, billing, or authentication in this version.
 
-```js
-DATA_MODE: "parquet"
-PARQUET_URL: "./data/ecommerce_events.parquet"
-```
+**Never put a Databricks personal access token, OAuth secret or warehouse credentials in client-side HTML, JavaScript, URL parameters or a public GitHub repository.** A real Databricks SQL Warehouse option would require a separate authenticated backend/proxy to invoke the [Databricks Statement Execution API](https://docs.databricks.com/aws/en/dev-tools/sql-execution-tutorial), enforce per-user permissions, quota, read-only policies, and audit execution. See [integration architecture](docs/databricks-integration.md).
 
-The expected schema and funnel definitions are documented in `docs/methodology.md`.
-
-## Core interaction
-
-1. Change one or more filters.
-2. The visible SQL query is rebuilt.
-3. The changed SQL line is highlighted.
-4. DuckDB-Wasm executes the query.
-5. Funnel counts and conversion rates are recalculated.
-6. A matching baseline query is executed.
-7. The comparison and written insight are regenerated from the query results.
-
-No funnel KPI is hardcoded.
-
-
-## Preparing the real GA4 dataset
-
-1. Run `scripts/ga4_export.sql` in BigQuery against the public Google Merchandise Store sample.
-2. Export the flattened result as CSV.
-3. Install the local preparation dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-4. Convert and enrich it:
-
-```bash
-python scripts/prepare_data.py raw/ga4_funnel.csv data/ecommerce_events.parquet
-```
-
-5. Change `DATA_MODE` in `js/config.js` from `"demo"` to `"parquet"`.
-
-The preparation script validates the minimum schema, derives day/weekend fields, adds U.S. federal-holiday metadata and writes compressed Zstandard Parquet.
+## Caveats / next steps
+- Browser performance is constrained by the device, WebAssembly availability, and public CDN access.
+- The visual builder generates a safe, supported subset of SQL. Arbitrary editor changes are **not** reverse-parsed into controls.
+- Add a backend connector for **optional** enterprise Databricks access once secrets management and authentication are available.
+- Expand the dataset using documented open datasets if external data becomes appropriate.
